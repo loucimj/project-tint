@@ -1,4 +1,4 @@
-import type { Project } from '../types'
+import type { Group, Project, Tint } from '../types'
 
 export type Saved = { name?: string; color?: string }
 export type SavedMap = Record<string, Saved>
@@ -21,10 +21,10 @@ const PALETTE = Object.values(NAMED)
 export const baseName = (root: string) =>
   root.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || root
 
-// Stable color per path, so a project keeps its color without setup
-export const autoColor = (root: string) => {
+// Stable color per key (a path or a group id), so nothing needs setup
+export const autoColor = (key: string) => {
   let hash = 0
-  for (const ch of root) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
+  for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
   return PALETTE[hash % PALETTE.length] ?? '#7c3aed'
 }
 
@@ -44,20 +44,43 @@ export const resolveProject = (root: string, saved: SavedMap): Project => {
   }
 }
 
+// The group wins when the chat is in one: its color marks every chat filed under it
+export const resolveTint = (
+  root: string,
+  group: Group | null,
+  projects: SavedMap,
+  groups: SavedMap,
+): Tint => {
+  const project = resolveProject(root, projects)
+  if (!group) return { root, group: null, name: project.name, color: project.color, project: project.name }
+  const own = groups[group.id] ?? {}
+  return {
+    root,
+    group,
+    name: own.name ?? group.name,
+    color: own.color ?? autoColor(group.id),
+    project: project.name,
+  }
+}
+
 export type Parsed =
   | { kind: 'show' }
   | { kind: 'list' }
-  | { kind: 'reset' }
+  | { kind: 'reset'; forProject: boolean }
   | { kind: 'prompts'; isOn: boolean }
-  | { kind: 'set'; color: string; name?: string }
+  | { kind: 'set'; color: string; name?: string; forProject: boolean }
   | { kind: 'error'; text: string }
 
+// A leading `project` aims the change at the folder even while the chat is in a group
 export const parseArgs = (args: string): Parsed => {
-  const [first = '', ...rest] = args.trim().split(/\s+/).filter(Boolean)
+  const words = args.trim().split(/\s+/).filter(Boolean)
+  const forProject = (words[0] ?? '').toLowerCase() === 'project'
+  if (forProject) words.shift()
+  const [first = '', ...rest] = words
   const word = first.toLowerCase()
   if (!word) return { kind: 'show' }
   if (word === 'list') return { kind: 'list' }
-  if (word === 'reset') return { kind: 'reset' }
+  if (word === 'reset') return { kind: 'reset', forProject }
   if (word === 'prompts') {
     const flag = (rest[0] ?? '').toLowerCase()
     if (flag === 'on' || flag === 'off') return { kind: 'prompts', isOn: flag === 'on' }
@@ -71,5 +94,5 @@ export const parseArgs = (args: string): Parsed => {
     }
   }
   const name = rest.join(' ').trim()
-  return name ? { kind: 'set', color, name } : { kind: 'set', color }
+  return name ? { kind: 'set', color, name, forProject } : { kind: 'set', color, forProject }
 }
