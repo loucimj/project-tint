@@ -19,14 +19,18 @@ const loadMap = async ($: EngineInterface, key: string): Promise<SavedMap> =>
   ((await $.store.get(key)) as SavedMap | undefined) ?? {}
 
 // The sidebar group the desktop app files this chat under: null when ungrouped,
-// undefined when unknown (no desktop app, or it has not reported groups yet)
+// undefined when unknown (no desktop app, or it has not reported groups yet).
+// Asked by this process's own host session id: a `self` lookup from a plugin
+// resolves to whichever window the app last fronted, not to this chat.
 const readGroup = async ($: EngineInterface): Promise<Group | null | undefined> => {
   try {
-    const result = await $.mcp.call('ccd_session_mgmt', 'get_session', { session_id: 'self' })
+    const hostId = await $.env.get('CLAUDE_CODE_HOST_SESSION_ID')
+    const result = await $.mcp.call('ccd_session_mgmt', 'get_session', { session_id: hostId ?? 'self' })
     if (result.isError) return undefined
     const text = result.content.find(block => block.type === 'text')?.text
     if (!text) return undefined
-    const info = JSON.parse(text) as { group?: { id?: unknown; name?: unknown } | null }
+    const info = JSON.parse(text) as { sessionId?: unknown; group?: { id?: unknown; name?: unknown } | null }
+    if (hostId && info.sessionId !== hostId) return undefined
     if (!('group' in info)) return undefined
     const found = info.group
     if (!found || typeof found.id !== 'string') return null

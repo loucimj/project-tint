@@ -1,6 +1,6 @@
 {
   "name": "project-tint",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Colors the chat by sidebar group or project so you always know which context you are working in",
   "author": {
     "name": "Javier",
