@@ -1,0 +1,7 @@
+{
+  "name": "project-tint",
+  "version": "0.1.0",
+  "description": "Colors the chat by project so you always know which context you are working in",
+  "author": { "name": "Javier", "email": "javier@qeeptouch.com" },
+  "types": "./types/index.d.ts"
+}

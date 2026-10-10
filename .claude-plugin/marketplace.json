@@ -1,0 +1,13 @@
+{
+  "name": "project-tint",
+  "description": "Color-codes Claude Code sessions by project",
+  "owner": {
+    "name": "Javier"
+  },
+  "plugins": [
+    {
+      "name": "project-tint",
+      "source": "./"
+    }
+  ]
+}
